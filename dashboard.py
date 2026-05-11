@@ -1813,11 +1813,17 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
   @media (max-width: 768px) {{
     .header {{ padding: 16px; }}
     .header h1 {{ font-size: 17px; }}
-    .container {{ padding: 12px; }}
+    .container {{ padding: 8px; overflow-x: hidden; }}
     .row-2 {{ grid-template-columns: 1fr; }}
-    .cards > div {{ min-width: calc(50% - 8px) !important; padding: 16px 12px !important; }}
-    .cards > div > div:nth-child(2) {{ font-size: 22px !important; }}
-    table {{ font-size: 11px; }}
+    .panel, .panel-p {{ padding: 6px; }}
+    .cards > div {{ min-width: calc(50% - 6px) !important; padding: 14px 10px !important; }}
+    .cards > div > div:nth-child(2) {{ font-size: 20px !important; }}
+    table {{ font-size: 11px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }}
+    details summary {{ font-size: 13px; }}
+  }}
+  @media (max-width: 480px) {{
+    .cards > div {{ min-width: 100% !important; }}
+    .cards > div > div:nth-child(2) {{ font-size: 18px !important; }}
   }}
 </style>
 </head>
@@ -2577,11 +2583,17 @@ def build_agent_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFra
   @media (max-width:768px) {{
     .header {{ padding:16px; }}
     .header h1 {{ font-size:17px; }}
-    .container {{ padding:12px; }}
+    .container {{ padding:8px; overflow-x:hidden; }}
     .row-2 {{ grid-template-columns:1fr; }}
-    .cards > div {{ min-width:calc(50% - 8px) !important; padding:14px 10px !important; }}
+    .panel, .panel-p {{ padding:6px; }}
+    .cards > div {{ min-width:calc(50% - 6px) !important; padding:14px 10px !important; }}
     .cards > div > div:nth-child(2) {{ font-size:20px !important; }}
-    table {{ font-size:11px; }}
+    table {{ font-size:11px; display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; }}
+    details summary {{ font-size:13px; }}
+  }}
+  @media (max-width:480px) {{
+    .cards > div {{ min-width:100% !important; }}
+    .cards > div > div:nth-child(2) {{ font-size:18px !important; }}
   }}
 </style>
 </head>
