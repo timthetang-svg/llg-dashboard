@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 LLG Industries — Cloud Dashboard
-Upload LLE / LLG sales Excel → download your dashboard HTML
 """
 import io
 import sys
@@ -23,12 +22,54 @@ st.set_page_config(
     layout="wide",
 )
 
-st.markdown(
-    "<h1 style='color:#1a3c5e;font-family:Segoe UI'>📊 LLG Industries — Sales Dashboard</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown("Upload your sales Excel file(s), choose the report type, then click **Generate**.")
+# ── Password config ────────────────────────────────────────────────────────────
 
+ROLE_MAP = {
+    st.secrets["passwords"]["boss"]:   "boss",
+    st.secrets["passwords"]["agent1"]: "agent1",
+    st.secrets["passwords"]["agent2"]: "agent2",
+}
+
+# ── Login page ─────────────────────────────────────────────────────────────────
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+if st.session_state.role is None:
+    st.markdown(
+        "<h1 style='color:#1a3c5e;font-family:Segoe UI'>📊 LLG Industries — Sales Dashboard</h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(" ")
+    with st.form("login"):
+        pw = st.text_input("Password", type="password", placeholder="Enter your password")
+        submitted = st.form_submit_button("Login →", use_container_width=True, type="primary")
+    if submitted:
+        role = ROLE_MAP.get(pw)
+        if role:
+            st.session_state.role = role
+            st.rerun()
+        else:
+            st.error("Incorrect password. Please try again.")
+    st.stop()
+
+# ── Dashboard (logged in) ──────────────────────────────────────────────────────
+
+role = st.session_state.role
+
+col_title, col_logout = st.columns([5, 1])
+with col_title:
+    st.markdown(
+        "<h1 style='color:#1a3c5e;font-family:Segoe UI'>📊 LLG Industries — Sales Dashboard</h1>",
+        unsafe_allow_html=True,
+    )
+with col_logout:
+    st.markdown(" ")
+    if st.button("Logout", use_container_width=True):
+        st.session_state.role = None
+        st.rerun()
+
+st.markdown("Upload your sales Excel file(s), choose report type, then click **Generate**.")
 st.divider()
 
 col1, col2 = st.columns(2)
@@ -37,11 +78,22 @@ with col1:
 with col2:
     llg_file = st.file_uploader("LLG Sales Data (.xlsx)", type="xlsx", key="llg")
 
-report_type = st.radio(
-    "Report type",
-    ["Company Overview", "Agent Dashboard (AGENT1 & AGENT2)", "Agent 3 Dashboard"],
-    horizontal=True,
-)
+# Report types & agent filtering per role
+if role == "boss":
+    report_type = st.radio(
+        "Report type",
+        ["Company Overview", "Agent Dashboard (AGENT1 & AGENT2)", "Agent 3 Dashboard"],
+        horizontal=True,
+    )
+    filter_agents = None  # boss sees all
+elif role == "agent1":
+    report_type = "agent_individual"
+    filter_agents = ["AGENT1"]
+    st.info("📋 Your personal sales dashboard — AGENT1")
+elif role == "agent2":
+    report_type = "agent_individual"
+    filter_agents = ["AGENT2"]
+    st.info("📋 Your personal sales dashboard — AGENT2")
 
 st.divider()
 
@@ -50,7 +102,7 @@ if st.button("🚀 Generate Dashboard", type="primary", use_container_width=True
         st.error("Please upload at least one Excel file.")
         st.stop()
 
-    with st.spinner("Reading data and building charts… (may take 20–40 seconds)"):
+    with st.spinner("Reading data and building charts… (20–40 seconds)"):
         try:
             frames, foc_frames, full_frames = [], [], []
 
@@ -76,25 +128,30 @@ if st.button("🚀 Generate Dashboard", type="primary", use_container_width=True
                 fname = f"dashboard_{today}.html"
 
             elif report_type == "Agent Dashboard (AGENT1 & AGENT2)":
-                IN_HOUSE   = ["AGENT1", "AGENT2"]
-                agent_df   = combined[combined["Agent"].isin(IN_HOUSE)].copy()
-                agent_full = df_full[df_full["Agent"].astype(str).isin(IN_HOUSE)].copy()
-                html  = build_agent_dashboard(agent_df, foc_cost, agent_full, agents=IN_HOUSE)
+                agents     = ["AGENT1", "AGENT2"]
+                agent_df   = combined[combined["Agent"].isin(agents)].copy()
+                agent_full = df_full[df_full["Agent"].astype(str).isin(agents)].copy()
+                html  = build_agent_dashboard(agent_df, foc_cost, agent_full, agents=agents)
                 fname = f"dashboard_agent_{today}.html"
 
-            else:
-                AGENT3     = ["AGENT3"]
-                agent3_df  = combined[combined["Agent"].isin(AGENT3)].copy()
-                agent3_full = df_full[df_full["Agent"].astype(str).isin(AGENT3)].copy()
-                html  = build_agent_dashboard(agent3_df, foc_cost, agent3_full, agents=AGENT3)
+            elif report_type == "Agent 3 Dashboard":
+                agents      = ["AGENT3"]
+                agent3_df   = combined[combined["Agent"].isin(agents)].copy()
+                agent3_full = df_full[df_full["Agent"].astype(str).isin(agents)].copy()
+                html  = build_agent_dashboard(agent3_df, foc_cost, agent3_full, agents=agents)
                 fname = f"dashboard_agent3_{today}.html"
 
+            else:  # agent_individual
+                agent_df   = combined[combined["Agent"].isin(filter_agents)].copy()
+                agent_full = df_full[df_full["Agent"].astype(str).isin(filter_agents)].copy()
+                html  = build_agent_dashboard(agent_df, foc_cost, agent_full, agents=filter_agents)
+                fname = f"dashboard_{filter_agents[0].lower()}_{today}.html"
+
         except Exception as e:
-            st.error(f"Error generating dashboard: {e}")
+            st.error(f"Error: {e}")
             st.stop()
 
-    st.success(f"✅ Dashboard ready!")
-
+    st.success("✅ Dashboard ready!")
     st.download_button(
         label="📥 Download Dashboard HTML",
         data=html.encode("utf-8"),
@@ -103,8 +160,4 @@ if st.button("🚀 Generate Dashboard", type="primary", use_container_width=True
         use_container_width=True,
         type="primary",
     )
-
-    st.info(
-        "**How to view:** After downloading, open the HTML file in any browser "
-        "(Chrome, Safari). Works on phone and laptop."
-    )
+    st.info("Open the downloaded file in Chrome or Safari — works on phone and laptop.")
