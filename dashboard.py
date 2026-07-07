@@ -753,6 +753,7 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
         "PENANG": "Penang", "BUTTERWORTH": "Penang",
         "J.BAHRU": "Johor", "JOHOR BAHRU": "Johor", "PARIT JAWA": "Johor",
         "SEGAMAT": "Johor", "BATU PAHAT": "Johor", "MUAR": "Johor",
+        "00602": "Johor",  # branch/area code for Batu Pahat
         "TAIPING": "Perak", "PERAK": "Perak", "IPOH": "Perak",
         "BENTONG": "Pahang", "KUANTAN": "Pahang",
         "SHAH ALAM": "Selangor", "PUCHONG": "Selangor", "KLANG": "Selangor",
