@@ -757,7 +757,7 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
         "TAIPING": "Perak", "PERAK": "Perak", "IPOH": "Perak",
         "BENTONG": "Pahang", "KUANTAN": "Pahang",
         "SHAH ALAM": "Selangor", "PUCHONG": "Selangor", "KLANG": "Selangor",
-        "SUBANG": "Selangor", "PETALING JAYA": "Selangor",
+        "SUBANG": "Selangor", "PETALING JAYA": "Selangor", "GOMBAK": "Selangor",
         "SIBU": "Sarawak", "KUCHING": "Sarawak", "MIRI": "Sarawak",
         "KOTA KINABALU": "Sabah", "SANDAKAN": "Sabah",
         "SEREMBAN": "Negeri Sembilan",
@@ -767,7 +767,49 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
         "KUALA TERENGGANU": "Terengganu",
     }
 
-    def _norm_area(val):
+    # The raw "Area" field is often just an internal branch code (e.g. "00602"), which can't be
+    # geographically classified on its own. But "DESCRIPTION.1" (from the same source system) reliably
+    # spells out "Town, STATE" for these codes — use that as the primary signal, falling back to the
+    # old Area-code text matching only when DESCRIPTION.1 is blank or unresolvable.
+    STATE_ALIASES = {
+        "SELANGOR": "Selangor",
+        "PERAK": "Perak",
+        "JOHOR": "Johor",
+        "PENANG": "Penang",
+        "PULAU PINANG": "Penang",
+        "PAHANG": "Pahang",
+        "SARAWAK": "Sarawak",
+        "SABAH": "Sabah",
+        "NEGERI SEMBILAN": "Negeri Sembilan",
+        "NEGERI SAMBILAN": "Negeri Sembilan",  # typo seen in the source system
+        "MELAKA": "Melaka",
+        "MALACCA": "Melaka",
+        "KEDAH": "Kedah",
+        "KELANTAN": "Kelantan",
+        "TERENGGANU": "Terengganu",
+        "KUALA LUMPUR": "Kuala Lumpur",
+        "KL": "Kuala Lumpur",
+    }
+
+    def _state_from_description(desc):
+        if pd.isna(desc):
+            return None
+        d = str(desc).strip().upper()
+        if not d or d in ("DEFAULT AREA", "----", "-"):
+            return None
+        segment = d.split(",")[-1].strip() if "," in d else d
+        for key in sorted(STATE_ALIASES, key=len, reverse=True):
+            if segment.startswith(key):
+                return STATE_ALIASES[key]
+        for key in sorted(STATE_ALIASES, key=len, reverse=True):
+            if key in d:
+                return STATE_ALIASES[key]
+        return None
+
+    def _norm_area(val, desc1=None):
+        state = _state_from_description(desc1)
+        if state:
+            return state
         if pd.isna(val):
             return "Unknown"
         s = str(val).strip()
@@ -788,7 +830,7 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
         return "Others"
 
     area_df = df[df["Area"].notna()].copy()
-    area_df["Region"] = area_df["Area"].apply(_norm_area)
+    area_df["Region"] = area_df.apply(lambda r: _norm_area(r["Area"], r.get("DESCRIPTION.1")), axis=1)
     # Online/ecommerce orders have no physical branch code (not fulfilled through a regional agent),
     # so they'd otherwise inflate "Unknown" with orders that were never meant to have a state.
     area_df.loc[area_df["SalesChannel"] == "Ecommerce", "Region"] = "Online (no physical branch)"
