@@ -789,6 +789,9 @@ def build_dashboard(df: pd.DataFrame, foc_cost: float, df_full: pd.DataFrame, re
 
     area_df = df[df["Area"].notna()].copy()
     area_df["Region"] = area_df["Area"].apply(_norm_area)
+    # Online/ecommerce orders have no physical branch code (not fulfilled through a regional agent),
+    # so they'd otherwise inflate "Unknown" with orders that were never meant to have a state.
+    area_df.loc[area_df["SalesChannel"] == "Ecommerce", "Region"] = "Online (no physical branch)"
     area = area_df.groupby("Region").agg(
         Revenue=("Revenue_RM","sum"),
         Customers=("Customer","nunique"),
